@@ -1,65 +1,69 @@
 # 프로젝트 핸드오프 — Immigration-AI-mobile
 
-> 새 세션이 이 프로젝트를 빠르게 이해하기 위한 문서. 먼저 이걸 읽고 `CLAUDE.md` → `기획서.md` 순으로 보면 됨.
+> 새 세션은 이 문서 → `README.md` → `CLAUDE.md` → `기획서.md` 순으로 보면 된다.
 
 ## 한 줄 요약
 
-비자 행정사용 **RAG 챗봇의 모바일판**. 데스크탑판(`../Immigration-AI`)에서 파생했고, **로컬 LLM을 제거하고 클라우드 LLM 전용**으로 만든다. (iOS/Android, Tauri v2 모바일)
-
-## 데스크탑판과의 관계
-
-- 형제 폴더 `../Immigration-AI` = 완성된 데스크탑 앱 (Tauri, 로컬 LLM(Ollama) + 클라우드 겸용, 배포까지 됨).
-- 이 모바일판은 데스크탑의 **코어 로직을 이식**하되 클라우드 전용으로 단순화.
-- **재사용**: `documents`(parser=pdf-extract, chunker), `rag`(retriever, 하이브리드 검색, 프롬프트), ChatPane 채팅 UI 패턴.
-- **제거**: `llm/ollama`, 로컬 임베딩, 벡터DB 2컬렉션(all/leakable) 분리, Ollama 관리 탭.
-
-## 확정된 핵심 결정 (ADR 참고)
-
-| 항목 | 결정 | 근거 |
-|---|---|---|
-| 플랫폼 | Tauri v2 모바일 (iOS/Android) | Rust/React 코어 재사용 — `docs/adr/0001` |
-| LLM | **클라우드 전용** (OpenAI API, Anthropic 선택) | 모바일은 로컬 LLM 비현실적 |
-| 임베딩 | **클라우드** OpenAI `text-embedding-3-small`(1536d) | 로컬 임베딩 없음 |
-| 보안 | **유출가능(leakable) 문서만 허용**, 유출불가 업로드 금지 | 모바일=클라우드 전송 전제 — `docs/adr/0002` |
-| 벡터DB | 단일 컬렉션(유출가능 전용), 기기 로컬 | 2컬렉션 분리 불필요 |
-| API 키 | 모바일 보안저장(iOS Keychain/Android Keystore) | 평문 금지 |
-
-## 중요 제약 (반복 질문 방지)
-
-- **ChatGPT Plus 구독 / Codex OAuth 로 앱에서 GPT 못 씀.** Codex OAuth는 Codex(코딩 에이전트) 전용 스코프이고, **임베딩 API가 없음.** RAG엔 임베딩 필수 → **OpenAI API 키가 유일한 정식 경로.** (약관·정지 위험 때문에 브라우저 로그인/세션 우회 안 함.)
+비자 행정사용 **RAG 챗봇의 모바일판**(iOS/Android, Tauri v2). 데스크탑판
+(`../Immigration-AI`)에서 파생했고 **로컬 LLM 을 제거해 클라우드 전용**으로 만들었다.
 
 ## 현재 상태 (2026-07-29)
 
-**하네스 구조 + 기획만 완료. 코드는 아직 없음(스캐폴드 전).**
+**기능 구현 완료. 양 플랫폼 실행 검증됨. 남은 건 레포 생성과 스토어 서명뿐.**
 
-```
-Immigration-AI-mobile/
-├── 기획서.md            상세 기획
-├── CLAUDE.md            에이전트 개발 규칙(모바일)
-├── HANDOFF.md           (이 문서)
-├── docs/
-│   ├── architecture.md
-│   ├── specs/0001-scaffold.md      첫 스펙
-│   └── adr/ 0001-스택, 0002-클라우드전용보안
-└── todos/
-    ├── BACKLOG.md                  12개 태스크 로드맵(1~3단계)
-    └── active/0001-scaffold.md     ← 다음 할 일
-```
+| 항목 | 상태 |
+|---|---|
+| Rust 코어 (문서/RAG/LLM/보안) | ✅ 51 테스트 통과, clippy `-D warnings` 클린 |
+| 프론트 3탭 | ✅ vitest 통과, Android 에뮬레이터에서 3탭 전부 렌더 확인 |
+| Android 빌드·실행 | ✅ APK 빌드 → 에뮬레이터 실행 |
+| Android Keystore 보안저장 | ✅ 암호문만 저장, 콜드 스타트 후 복호화까지 확인 |
+| iOS 빌드·실행 | ✅ 시뮬레이터 빌드·실행 (wry 패치 필요했음 — ADR 0003) |
+| iOS Keychain 보안저장 | ⚠️ 컴파일·실행만 확인. **저장/조회 실동작 미검증** |
+| CI (GitHub Actions) | ✅ 워크플로 작성 완료 (레포가 없어 아직 미실행) |
+| GitHub 레포 | ❌ **미생성** — `gh auth login` 필요 |
+| 스토어 서명·배포 | ❌ Apple Developer / Play Console 계정 필요 |
 
-- git: 초기화됨, 첫 커밋 완료. **원격 레포 아직 없음**(별도 새 레포 예정).
+## 확정된 핵심 결정
+
+| 항목 | 결정 | 근거 |
+|---|---|---|
+| 플랫폼 | Tauri v2 모바일 | Rust/React 코어 재사용 — `docs/adr/0001` |
+| LLM | 클라우드 전용 (OpenAI/Anthropic) | 모바일은 로컬 LLM 비현실적 |
+| 임베딩 | OpenAI `text-embedding-3-small`(1536d) | Anthropic 은 임베딩 API 부재 |
+| 보안 | 유출가능 문서만 허용 | 모바일=클라우드 전송 전제 — `docs/adr/0002` |
+| 벡터DB | 단일 컬렉션 | 분기가 없으면 잘못 고를 수 없다 |
+| 키 저장 | iOS Keychain / Android Keystore | 평문 폴백 경로 없음 |
+| wry | 벤더 패치 | iOS 실행 즉시 크래시 회피 — `docs/adr/0003` |
+
+## 반복 질문 방지
+
+- **ChatGPT Plus 구독 / Codex OAuth 로는 이 앱을 못 쓴다.** Codex OAuth 는 코딩 에이전트
+  전용 스코프이고 **임베딩 API 가 없다.** RAG 에 임베딩은 필수 → **OpenAI API 키가 유일한
+  정식 경로.** 브라우저 로그인 우회는 약관·정지 위험 때문에 하지 않는다.
+- 채팅을 Anthropic 으로 해도 **OpenAI 키는 반드시 필요**하다(임베딩 때문).
+
+## 개발 중 발견한 함정 (재발 방지)
+
+1. **Tauri v2 는 `ndk-context` 를 초기화하지 않는다.** Android 에서 JNI 를 쓰려면
+   `wry::prelude::dispatch` 로 JavaVM/Activity 를 직접 잡아야 한다. `ndk_context::android_context()`
+   를 부르면 패닉 → non-unwinding abort 로 앱이 죽는다.
+2. **wry 0.55.1 은 iOS 에서 무조건 크래시한다.** `platform_webview_version()` 의
+   `bundle.unload()`. `vendor/wry` 패치로 회피 중 — 업스트림 수정 시 제거할 것.
+3. **Android 파일 피커는 `content://` URI 를 준다.** Rust 가 경로로 못 읽으므로
+   프론트에서 `plugin-fs.readFile()` 로 바이트를 읽어 IPC 로 넘긴다.
+4. **보안저장 커맨드는 반드시 `spawn_blocking` 위에서.** Android 구현이 메인 스레드 왕복을
+   기다리므로 메인 스레드에서 부르면 교착한다.
+5. 시뮬레이터/에뮬레이터 빌드는 **서명이 필요 없다** — 실기기 iOS 만 Apple 팀이 필요.
 
 ## 하네스 워크플로
 
-`docs/specs/` 스펙 → **사람 승인** → `/harness-work <태스크>` 로 TDD 구현 → `/harness-review` → 통과 시 `todos/done/` 이동 + 커밋(`type :: 메시지`).
+`docs/specs/` 스펙 → 사람 승인 → `/harness-work` → `/harness-review` → `todos/done/` +
+커밋(`type :: 메시지`). 진행 상황은 `todos/BACKLOG.md`.
 
-## 다음 할 일 — Task 0001
+## 다음 할 일
 
-**프로젝트 스캐폴드**: Tauri v2 + React/TS 프론트 + Rust 코어 모듈 경계(documents/rag/llm/security) 스텁 + IPC 계약 + 3탭(문서/채팅/설정) 골격. **로컬 LLM 코드 전무.**
-→ `todos/active/0001-scaffold.md` 참고. 승인되면 여기서부터 구현 시작.
-
-## 시작 방법 (새 세션)
-
-1. 이 폴더에서 세션 열면 `CLAUDE.md` 자동 로드됨.
-2. 이 `HANDOFF.md` + `기획서.md` + `todos/active/0001-scaffold.md` 읽기.
-3. 필요하면 데스크탑판 `../Immigration-AI/src-tauri/src/{documents,rag}/` 참고해 이식.
-4. `/harness-work todos/active/0001-scaffold.md` 로 착수.
+1. `gh auth login` 후 private 레포 생성 + 푸시 → CI 첫 실행 확인
+2. iOS 시뮬레이터에서 설정 탭 → 키 저장 → 앱 재시작 → 채팅 1회
+   (Android 에서 한 것과 동일한 확인. 401 이 뜨면 Keychain 왕복 정상)
+3. 실제 OpenAI 키로 문서 업로드 → 인덱싱 → 질의 E2E
+4. 서명 시크릿 등록 후 `mobile-build.yml` 릴리즈 실행
