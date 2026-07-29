@@ -1,0 +1,25 @@
+# deps
+node_modules/
+dist/
+
+# rust / tauri
+src-tauri/target/
+src-tauri/gen/
+
+# local data (문서/벡터/키는 로컬 전용 — 커밋 금지)
+data/
+*.db
+*.sqlite
+
+# secrets
+.env
+.env.local
+
+# claude local settings
+.claude/settings.local.json
+
+# os / editor
+.DS_Store
+*.log
+.vscode/
+.idea/
