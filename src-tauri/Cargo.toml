@@ -1,3 +1,10 @@
+# wry 0.55.1 의 iOS 크래시 우회 — `platform_webview_version()` 이 시스템 소유 번들에
+# `unload()` 를 호출해 앱 실행 즉시 죽는다. 벤더 사본에서 그 한 줄만 제거했다.
+# 업스트림(tauri-apps/wry) 수정이 릴리스되면 이 patch 와 vendor/wry 를 삭제할 것.
+# 근거: docs/adr/0003-wry-ios-patch.md
+[patch.crates-io]
+wry = { path = "vendor/wry" }
+
 [package]
 name = "immigration-ai-mobile"
 version = "0.1.0"
@@ -44,10 +51,12 @@ keyring = { version = "3", features = [
 security-framework = "3"
 
 # Android: JNI 로 AndroidKeyStore(AES-GCM) + SharedPreferences 조합.
+# wry 는 이미 의존 트리에 있지만, JavaVM/Activity 를 얻는 `prelude::dispatch` 를
+# 직접 쓰기 위해 명시적 의존으로 올린다 (Tauri v2 는 ndk-context 를 초기화하지 않음).
 [target.'cfg(target_os = "android")'.dependencies]
 jni = "0.21"
-ndk-context = "0.1"
 base64 = "0.22"
+wry = "0.55"
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

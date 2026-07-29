@@ -1,0 +1,157 @@
+name: 모바일 빌드
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "릴리즈 빌드(서명 시도)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-latest
+    # 시크릿은 잡 레벨 env 로 올려야 스텝의 `if:` 에서 참조할 수 있다.
+    # (스텝 자신의 env 는 그 스텝의 if 평가 시점에 아직 없다.)
+    env:
+      ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+      - uses: nttld/setup-ndk@v1
+        id: ndk
+        with:
+          ndk-version: r25c
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # gen/ 은 커밋하지 않으므로 CI 에서 매번 생성한다.
+      - name: Android 프로젝트 생성
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: npm run tauri android init
+
+      # 서명 시크릿이 있을 때만 릴리즈 서명을 붙인다. 없으면 디버그 서명 APK 로 끝난다.
+      - name: 업로드 키 구성
+        if: env.ANDROID_KEY_BASE64 != ''
+        run: |
+          cd src-tauri/gen/android
+          echo "$ANDROID_KEY_BASE64" | base64 -d > upload.jks
+          cat > keystore.properties <<EOF
+          storeFile=$(pwd)/upload.jks
+          keyAlias=$ANDROID_KEY_ALIAS
+          password=$ANDROID_KEY_PASSWORD
+          EOF
+
+      - name: 빌드 (APK + AAB)
+        env:
+          NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          if [ "${{ inputs.release }}" = "true" ] || [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
+            npm run tauri android build -- --apk --aab
+          else
+            npm run tauri android build -- --debug --apk
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          if-no-files-found: error
+          path: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+            src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
+
+  ios:
+    name: iOS
+    runs-on: macos-latest
+    env:
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_DEVELOPMENT_TEAM: ${{ secrets.APPLE_DEVELOPMENT_TEAM }}
+      APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+      APPLE_API_KEY_PATH: ${{ secrets.APPLE_API_KEY_PATH }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: iOS 프로젝트 생성
+        run: npm run tauri ios init
+
+      # 서명 없이 검증 가능한 최대치. 실기기 IPA 는 Apple 계정이 있어야 한다.
+      - name: 시뮬레이터 빌드 (서명 불필요)
+        run: npm run tauri ios build -- --debug --target aarch64-sim --ci
+
+      - name: 시뮬레이터 앱 아카이빙
+        run: |
+          APP=$(find ~/Library/Developer/Xcode/DerivedData -type d -name '*.app' \
+                -path '*debug-iphonesimulator*' | head -1)
+          mkdir -p artifacts
+          ditto -c -k --keepParent "$APP" artifacts/ios-simulator-app.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-simulator
+          if-no-files-found: error
+          path: artifacts/ios-simulator-app.zip
+
+      # --- 여기부터는 Apple Developer 계정 시크릿이 있어야 동작한다 ---
+      - name: 서명 인증서 설치
+        if: env.APPLE_CERTIFICATE != ''
+        run: |
+          KEYCHAIN=build.keychain
+          security create-keychain -p ci "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p ci "$KEYCHAIN"
+          echo "$APPLE_CERTIFICATE" | base64 -d > cert.p12
+          security import cert.p12 -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KEYCHAIN"
+
+      - name: 실기기 IPA 빌드
+        if: env.APPLE_DEVELOPMENT_TEAM != ''
+        run: npm run tauri ios build -- --ci --export-method app-store-connect
+
+      - uses: actions/upload-artifact@v4
+        if: env.APPLE_DEVELOPMENT_TEAM != ''
+        with:
+          name: ios-ipa
+          path: src-tauri/gen/apple/build/**/*.ipa

@@ -8,8 +8,11 @@ use crate::security::SERVICE;
 use anyhow::{anyhow, Result};
 use base64::engine::general_purpose::STANDARD as B64;
 use base64::Engine;
-use jni::objects::{JByteArray, JObject, JString, JValue};
+use jni::objects::{GlobalRef, JByteArray, JObject, JString, JValue};
 use jni::{JNIEnv, JavaVM};
+use std::sync::mpsc;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 /// 마스터 키 별칭 — KeyStore 안에서만 의미. 지우면 저장된 키 전부 복호화 불가.
 const KEY_ALIAS: &str = "immigration_ai_master_key";
@@ -31,17 +34,46 @@ fn prefs_name() -> String {
     format!("{SERVICE}.secure")
 }
 
+/// JavaVM + Activity(Context) 전역참조. 최초 1회만 확보하고 이후 재사용한다.
+static CONTEXT: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+
+/// 메인 스레드 왕복 대기 상한. 초과하면 교착 대신 에러로 끝낸다.
+const CONTEXT_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// JavaVM 과 Activity 를 확보한다.
+///
+/// Tauri v2 는 `ndk-context` 를 초기화하지 않으므로(전역 컨텍스트가 비어 있음)
+/// wry 의 메인 스레드 디스패치로 직접 잡아 캐싱한다.
+/// 최초 호출만 메인 스레드 왕복이 필요하므로 **메인 스레드에서 호출하면 안 된다**
+/// — 커맨드는 전부 `spawn_blocking` 위에서 실행한다.
+fn context() -> Result<&'static (JavaVM, GlobalRef)> {
+    if let Some(c) = CONTEXT.get() {
+        return Ok(c);
+    }
+
+    let (tx, rx) = mpsc::channel();
+    wry::prelude::dispatch(move |env, activity, _webview| {
+        let captured = (|| -> jni::errors::Result<(JavaVM, GlobalRef)> {
+            Ok((env.get_java_vm()?, env.new_global_ref(activity)?))
+        })();
+        let _ = tx.send(captured);
+    });
+
+    let captured = rx
+        .recv_timeout(CONTEXT_TIMEOUT)
+        .map_err(|_| anyhow!("Android 컨텍스트 확보 시간 초과"))?
+        .map_err(|e| anyhow!("Android 컨텍스트 확보 실패: {e}"))?;
+    Ok(CONTEXT.get_or_init(|| captured))
+}
+
 /// JNI 환경 + Activity Context 확보 후 클로저 실행.
 fn with_env<T>(f: impl FnOnce(&mut JNIEnv, &JObject) -> Result<T>) -> Result<T> {
-    let ctx = ndk_context::android_context();
-    let vm = unsafe { JavaVM::from_raw(ctx.vm().cast()) }
-        .map_err(|e| anyhow!("JavaVM 접근 실패: {e}"))?;
+    let (vm, activity) = context()?;
     let mut guard = vm
         .attach_current_thread()
         .map_err(|e| anyhow!("JNI attach 실패: {e}"))?;
-    let context = unsafe { JObject::from_raw(ctx.context().cast()) };
 
-    let result = f(&mut guard, &context);
+    let result = f(&mut guard, activity.as_obj());
 
     // Java 예외가 남아 있으면 이후 JNI 호출이 전부 실패하므로 반드시 정리.
     if guard.exception_check().unwrap_or(false) {

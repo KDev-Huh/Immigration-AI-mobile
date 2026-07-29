@@ -145,6 +145,7 @@ export default function ChatPane({ ns, onAsk, subtitle }: Props) {
             <p className="note">
               업로드한 문서에 근거해서만 답변합니다. 근거가 없으면 “자료 없음”이라고 답합니다.
             </p>
+            <p className="note">예: “D-2 비자에서 취업비자 전환 시 필요 서류는?”</p>
           </div>
         )}
         {active?.messages.map((m, i) => (
@@ -177,7 +178,8 @@ export default function ChatPane({ ns, onAsk, subtitle }: Props) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={onKeyDown}
           rows={1}
-          placeholder="예: D-2 비자에서 취업비자 전환 시 필요 서류는?"
+          // 예시 질문은 빈 화면 안내로 옮겼다 — 한 줄 높이 컴포저에서는 잘린다.
+          placeholder="질문 입력"
         />
         <button
           className="send"

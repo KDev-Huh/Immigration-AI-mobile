@@ -137,7 +137,7 @@ async fn run_index(
     vec_store: &State<'_, Mutex<VectorStore>>,
 ) -> Result<DocumentMeta, String> {
     // 키를 먼저 확인 — 무거운 파싱을 하고 나서 키 없음으로 실패하면 낭비다.
-    let api_key = security::embedding_api_key().map_err(|e| e.to_string())?;
+    let api_key = off_main(security::embedding_api_key).await?;
 
     let path = {
         let s = doc_store.lock().map_err(|e| e.to_string())?;
@@ -217,7 +217,7 @@ pub async fn ask(
     }
 
     // 1) 쿼리 임베딩 (OpenAI)
-    let embed_key = security::embedding_api_key().map_err(|e| e.to_string())?;
+    let embed_key = off_main(security::embedding_api_key).await?;
     let qvec = embedding::embed_query(&embed_key, &query)
         .await
         .map_err(|e| e.to_string())?;
@@ -246,7 +246,8 @@ pub async fn ask(
     );
 
     // 5) 생성 — 락 미보유 상태에서 await.
-    let chat_key = security::get_api_key(provider)
+    let chat_key = off_main(move || security::get_api_key(provider))
+        .await
         .map_err(|_| "API 키가 없습니다. 설정 탭에서 등록하세요.".to_string())?;
     let user = build_user_message(&ctx.prompt_context, &query);
     let text =
@@ -260,17 +261,31 @@ pub async fn ask(
     })
 }
 
-#[tauri::command]
-pub fn set_api_key(provider: CloudProvider, key: String) -> Result<(), String> {
-    security::set_api_key(provider, &key).map_err(|e| e.to_string())
+// 보안저장 커맨드는 전부 `spawn_blocking` 위에서 돌린다.
+// Android 구현이 JavaVM/Activity 확보를 위해 메인 스레드로 디스패치하고 그 응답을
+// 기다리므로, 메인 스레드에서 실행되면 교착한다.
+async fn off_main<T, F>(work: F) -> Result<T, String>
+where
+    T: Send + 'static,
+    F: FnOnce() -> anyhow::Result<T> + Send + 'static,
+{
+    tauri::async_runtime::spawn_blocking(work)
+        .await
+        .map_err(|e| format!("작업 실행 실패: {e}"))?
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn has_api_key(provider: CloudProvider) -> Result<bool, String> {
-    security::has_api_key(provider).map_err(|e| e.to_string())
+pub async fn set_api_key(provider: CloudProvider, key: String) -> Result<(), String> {
+    off_main(move || security::set_api_key(provider, &key)).await
 }
 
 #[tauri::command]
-pub fn delete_api_key(provider: CloudProvider) -> Result<(), String> {
-    security::delete_api_key(provider).map_err(|e| e.to_string())
+pub async fn has_api_key(provider: CloudProvider) -> Result<bool, String> {
+    off_main(move || security::has_api_key(provider)).await
+}
+
+#[tauri::command]
+pub async fn delete_api_key(provider: CloudProvider) -> Result<(), String> {
+    off_main(move || security::delete_api_key(provider)).await
 }
