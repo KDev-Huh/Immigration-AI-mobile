@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "메인 창 권한. 파일 선택 + 선택한 파일 읽기만 허용 (쓰기·삭제 없음).",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "dialog:allow-open",
+    "fs:allow-read-file",
+    {
+      "identifier": "fs:scope",
+      "allow": ["**"]
+    }
+  ]
+}

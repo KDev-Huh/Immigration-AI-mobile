@@ -11,9 +11,14 @@ data/
 *.db
 *.sqlite
 
-# secrets
+# secrets — 서명 키/키스토어 절대 커밋 금지
 .env
 .env.local
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.cer
 
 # claude local settings
 .claude/settings.local.json

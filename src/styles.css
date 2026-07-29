@@ -1,0 +1,529 @@
+/* 모바일 우선 스타일. 노치 안전영역(safe-area) + 44px 터치 타깃 + 라이트/다크. */
+
+:root {
+  --bg: #ffffff;
+  --bg-alt: #f4f5f7;
+  --fg: #16181d;
+  --fg-dim: #6b7280;
+  --line: #e3e5e9;
+  --accent: #2563eb;
+  --accent-fg: #ffffff;
+  --danger: #dc2626;
+  --warn-bg: #fff7ed;
+  --warn-fg: #9a3412;
+  --bubble-user: #2563eb;
+  --bubble-user-fg: #ffffff;
+  --bubble-ai: #f1f3f6;
+  --tap: 44px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101216;
+    --bg-alt: #181b21;
+    --fg: #e8eaed;
+    --fg-dim: #9aa1ad;
+    --line: #2a2e36;
+    --accent: #3b82f6;
+    --danger: #f87171;
+    --warn-bg: #2a1e12;
+    --warn-fg: #fbbf24;
+    --bubble-ai: #1f232a;
+  }
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Segoe UI", Roboto, sans-serif;
+  font-size: 16px; /* iOS 입력 확대 방지 임계값 */
+  line-height: 1.5;
+  overscroll-behavior: none;
+}
+
+/* --- 셸 --- */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tab-content {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.pane {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pane[hidden] {
+  display: none;
+}
+
+.tabbar {
+  display: flex;
+  border-top: 1px solid var(--line);
+  background: var(--bg-alt);
+  padding-bottom: var(--safe-bottom);
+  flex: 0 0 auto;
+}
+
+.tabbar button {
+  flex: 1;
+  min-height: var(--tap);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 0;
+  background: none;
+  color: var(--fg-dim);
+  font-size: 11px;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.tabbar button.active {
+  color: var(--accent);
+}
+
+.tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* --- 일반 탭 (문서/설정) --- */
+.tab-section {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: calc(var(--safe-top) + 12px) 16px 24px;
+}
+
+.tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tab-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+h3 {
+  font-size: 15px;
+  margin: 24px 0 8px;
+}
+
+button {
+  font: inherit;
+  min-height: var(--tap);
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-alt);
+  color: var(--fg);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+
+button.danger {
+  color: var(--danger);
+}
+
+.note {
+  color: var(--fg-dim);
+  font-size: 13px;
+  margin: 6px 0;
+}
+
+.warn {
+  background: var(--warn-bg);
+  color: var(--warn-fg);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.error {
+  color: var(--danger);
+  font-size: 13px;
+  word-break: break-word;
+}
+
+/* --- 문서 목록 --- */
+.doc-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+}
+
+.doc-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.doc-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-meta {
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+.doc-err {
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.doc-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+
+.doc-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.bar-fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s;
+}
+
+.empty {
+  color: var(--fg-dim);
+  font-size: 14px;
+  padding: 16px 0;
+  list-style: none;
+}
+
+/* --- 설정 폼 --- */
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0;
+  flex-wrap: wrap;
+}
+
+.field label {
+  flex: 0 0 96px;
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+
+.field input,
+.field select {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--tap);
+  font: inherit;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.key-list {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.key-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.key-list li span:first-child {
+  flex: 1;
+}
+
+.ok {
+  color: var(--accent);
+}
+
+.missing {
+  color: var(--fg-dim);
+}
+
+/* --- 채팅 --- */
+.chatpane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(var(--safe-top) + 6px) 8px 6px;
+  border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.chat-title {
+  flex: 1;
+  text-align: center;
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-btn {
+  min-width: var(--tap);
+  border: 0;
+  background: none;
+  font-size: 18px;
+  padding: 0;
+}
+
+.chat-subtitle {
+  font-size: 12px;
+  color: var(--fg-dim);
+  padding: 4px 16px;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+}
+
+.messages {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.placeholder {
+  margin: auto;
+  text-align: center;
+  color: var(--fg-dim);
+  padding: 0 24px;
+}
+
+.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 88%;
+}
+
+.msg.user {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.msg.assistant {
+  align-self: flex-start;
+}
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--bubble-ai);
+}
+
+.msg.user .bubble {
+  background: var(--bubble-user);
+  color: var(--bubble-user-fg);
+}
+
+.typing {
+  color: var(--fg-dim);
+}
+
+.citations {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--fg-dim);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px calc(var(--safe-bottom) + 8px);
+  border-top: 1px solid var(--line);
+  flex: 0 0 auto;
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: var(--tap);
+  max-height: 30vh;
+  resize: none;
+  font: inherit;
+  padding: 10px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--bg-alt);
+  color: var(--fg);
+}
+
+.composer .send {
+  min-width: var(--tap);
+  width: var(--tap);
+  height: var(--tap);
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+  font-size: 18px;
+}
+
+/* --- 세션 드로어 --- */
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 10;
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: min(80%, 320px);
+  background: var(--bg);
+  border-right: 1px solid var(--line);
+  padding: calc(var(--safe-top) + 12px) 12px calc(var(--safe-bottom) + 12px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.new-chat {
+  width: 100%;
+}
+
+.session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.session-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--tap);
+  padding: 0 8px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.session-list li.active {
+  background: var(--bg-alt);
+}
+
+.session-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.session-del {
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--fg-dim);
+  font-size: 18px;
+}
+
+/* 태블릿 이상에서는 여백 확보 */
+@media (min-width: 720px) {
+  .tab-section,
+  .messages {
+    max-width: 760px;
+    margin: 0 auto;
+    width: 100%;
+  }
+}
