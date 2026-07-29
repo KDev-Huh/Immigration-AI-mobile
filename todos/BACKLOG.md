@@ -19,10 +19,12 @@
 - [x] 0009 설정 탭: 공급자/모델 선택 + API 키 입력 (`done/0009-settings.md`)
 - [x] 0010 모바일 보안저장 (iOS Keychain/Android Keystore) (`done/0010-secure-store.md`)
 - [x] 0011 모바일 반응형 UI (`done/0011-mobile-ui.md`)
-- [ ] 0012 iOS/Android 빌드·서명·스토어 배포 (`active/0012-ci-deploy.md`)
+- [x] 0012 GitHub 레포 + Actions CI/빌드 (`done/0012-ci-deploy.md`)
 
-## 남은 일 (실기기·계정 필요)
+## 남은 일 (계정·권한 필요 — 코드 작업 아님)
 
-- [ ] 0013 실기기 E2E 검증 — 업로드→인덱싱→질의, 보안저장 재시작 후 유지
+- [ ] 0013 GitHub Billing 해결 → CI 첫 실행 통과 확인 (현재 결제 문제로 잡 시작 거부됨)
+- [ ] 0016 iOS Keychain 실동작 확인 (시뮬레이터 수동 1회, Android 와 동일 절차)
+- [ ] 0017 실제 OpenAI 키로 업로드→인덱싱→질의 E2E
 - [ ] 0014 Apple Developer 서명 (`APPLE_*` 시크릿) → iOS TestFlight
 - [ ] 0015 Play Console 업로드 키 (`ANDROID_*` 시크릿) → 내부 테스트 트랙

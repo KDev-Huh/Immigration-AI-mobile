@@ -19,8 +19,8 @@
 | Android Keystore 보안저장 | ✅ 암호문만 저장, 콜드 스타트 후 복호화까지 확인 |
 | iOS 빌드·실행 | ✅ 시뮬레이터 빌드·실행 (wry 패치 필요했음 — ADR 0003) |
 | iOS Keychain 보안저장 | ⚠️ 컴파일·실행만 확인. **저장/조회 실동작 미검증** |
-| CI (GitHub Actions) | ✅ 워크플로 작성 완료 (레포가 없어 아직 미실행) |
-| GitHub 레포 | ❌ **미생성** — `gh auth login` 필요 |
+| GitHub 레포 | ✅ `KDev-Huh/Immigration-AI-mobile` (private) |
+| CI (GitHub Actions) | ⚠️ 워크플로 정상, **계정 결제 문제로 잡 시작 거부** |
 | 스토어 서명·배포 | ❌ Apple Developer / Play Console 계정 필요 |
 
 ## 확정된 핵심 결정
@@ -62,7 +62,7 @@
 
 ## 다음 할 일
 
-1. `gh auth login` 후 private 레포 생성 + 푸시 → CI 첫 실행 확인
+1. GitHub Billing 해결 → CI 재실행 (`gh run rerun --failed`). private 레포는 Actions 분을 소모하고 `macos-latest` 는 10배로 계산된다.
 2. iOS 시뮬레이터에서 설정 탭 → 키 저장 → 앱 재시작 → 채팅 1회
    (Android 에서 한 것과 동일한 확인. 401 이 뜨면 Keychain 왕복 정상)
 3. 실제 OpenAI 키로 문서 업로드 → 인덱싱 → 질의 E2E
