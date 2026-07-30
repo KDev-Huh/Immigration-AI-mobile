@@ -27,6 +27,7 @@
 
 - [x] 0013 CI 실행 (public 전환으로 해결)
 - [x] 0016 iOS Keychain 실동작 확인 (시뮬레이터에서 set→has→복호화→delete 전 경로)
+- [x] 0020 Android 업로드 거부 + 런처 아이콘 미반영 수정 (`done/0020-android-upload-and-icon.md`)
 - [ ] 0017 실제 OpenAI 키로 업로드→인덱싱→질의 E2E
 - [ ] 0014 Apple Developer 서명 (`APPLE_*` 시크릿) → iOS TestFlight
 - [ ] 0015 Play Console 업로드 키 (`ANDROID_*` 시크릿) → 내부 테스트 트랙

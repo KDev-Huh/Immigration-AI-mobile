@@ -23,11 +23,30 @@ const STAGE_LABEL: Record<string, string> = {
   error: "오류",
 };
 
-/** URI/경로 끝의 파일명 추출 (content:// 포함). */
-function basename(p: string): string {
-  const decoded = decodeURIComponent(p);
-  const seg = decoded.split(/[\\/]/).pop() || decoded;
-  return seg || "document.pdf";
+/**
+ * 표시용 파일명 추출.
+ *
+ * Android 파일 피커는 `content://` URI 를 준다. 제공자에 따라 마지막 경로 조각이
+ * 실제 파일명(`.../primary:Download/answer.pdf`)이기도 하고, 파일명과 무관한
+ * 문서 ID(`.../document/msf:1000000123`)이기도 하다. 후자는 출처 표시에 쓸 수
+ * 없으므로 날짜 기반 이름으로 대체한다. 포맷 판정은 이름이 아니라 Rust 가
+ * 내용(매직 바이트)으로 한다.
+ */
+export function displayName(picked: string): string {
+  let decoded = picked;
+  try {
+    decoded = decodeURIComponent(picked);
+  } catch {
+    // 잘못 인코딩된 URI 는 원본 그대로 쓴다.
+  }
+  const seg = (decoded.split(/[\\/]/).pop() ?? "").trim();
+  if (/\.pdf$/i.test(seg) && !seg.includes(":")) return seg;
+
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `문서-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(
+    d.getHours(),
+  )}${p(d.getMinutes())}.pdf`;
 }
 
 export default function DocumentsTab() {
@@ -68,7 +87,7 @@ export default function DocumentsTab() {
     try {
       const bytes = await readFile(picked);
       // 모바일은 유출가능만 허용 — 태그 선택 UI 자체를 두지 않는다.
-      const doc = await uploadDocument(basename(picked), bytes, "leakable");
+      const doc = await uploadDocument(displayName(picked), bytes, "leakable");
       await refresh();
       try {
         await indexDocument(doc.id);

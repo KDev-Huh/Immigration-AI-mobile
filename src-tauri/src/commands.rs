@@ -65,15 +65,17 @@ pub fn upload_document(
     if !sensitivity.allows_upload() {
         return Err(UPLOAD_REJECT.to_string());
     }
-    parser::detect_pdf(&filename).map_err(|e| e.to_string())?;
     if bytes.is_empty() {
         return Err("빈 파일입니다".to_string());
     }
+    // 확장자가 아니라 내용으로 판정한다 — 모바일 피커가 주는 이름에는
+    // 확장자가 없을 수 있다 (content:// 문서 ID).
+    parser::detect_pdf_bytes(&bytes).map_err(|e| e.to_string())?;
 
     let hash = format!("{:x}", Sha256::digest(&bytes));
     let meta = DocumentMeta {
         id: Uuid::new_v4().to_string(),
-        filename,
+        filename: parser::sanitize_filename(&filename),
         sensitivity,
         pages: 0,
         chunk_count: 0,

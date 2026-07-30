@@ -14,17 +14,41 @@ const MIN_TEXT_CHARS: usize = 20;
 /// 페이지 경계가 없어 내용 기준 pseudo-page 분할(~문자수). 출처 대략 위치용.
 const CONTENT_CHARS_PER_PAGE: usize = 1500;
 
-/// 파일명 확장자로 지원 포맷 판정.
-pub fn detect_pdf(filename: &str) -> Result<()> {
-    let ext = Path::new(filename)
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_ascii_lowercase())
-        .unwrap_or_default();
-    if ext == "pdf" {
+/// PDF 파일 시그니처. 규격상 파일 선두에 온다.
+const PDF_MAGIC: &[u8] = b"%PDF-";
+/// 시그니처를 찾을 선두 범위. 일부 파일은 BOM·공백이 앞에 붙는다.
+const MAGIC_SCAN_BYTES: usize = 1024;
+
+/// **내용**으로 PDF 판정.
+///
+/// 확장자로 판정하면 안 된다. Android 파일 피커는 `content://` URI 를 돌려주는데
+/// 제공자에 따라 마지막 경로 조각이 파일명이 아니라 문서 ID(`msf:1000000123`)다.
+/// 그러면 확장자가 아예 없어서 멀쩡한 PDF 가 "지원하지 않는 포맷"으로 거부된다.
+/// 어차피 업로드 시점에 바이트를 갖고 있으므로 시그니처로 판정하는 쪽이 정확하다.
+pub fn detect_pdf_bytes(bytes: &[u8]) -> Result<()> {
+    let head = &bytes[..bytes.len().min(MAGIC_SCAN_BYTES)];
+    if head.windows(PDF_MAGIC.len()).any(|w| w == PDF_MAGIC) {
         Ok(())
     } else {
-        Err(anyhow!("지원하지 않는 포맷: .{ext} (현재 PDF만 지원)"))
+        Err(anyhow!(
+            "PDF 파일이 아닙니다 (현재 텍스트 PDF만 지원합니다)"
+        ))
+    }
+}
+
+/// 표시용 파일명 정리. 출처 표시(`[파일명 p.N]`)에 쓰이므로 경로·URI 조각을 걷어낸다.
+/// 프론트가 이미 사람이 읽을 이름을 만들어 보내지만, 여기가 최종 방어선이다.
+pub fn sanitize_filename(raw: &str) -> String {
+    let base = raw.rsplit(['/', '\\']).next().unwrap_or(raw);
+    let base: String = base.chars().filter(|c| !c.is_control()).collect();
+    let base = base.trim();
+    if base.is_empty() {
+        return "문서.pdf".to_string();
+    }
+    if base.to_ascii_lowercase().ends_with(".pdf") {
+        base.to_string()
+    } else {
+        format!("{base}.pdf")
     }
 }
 
@@ -82,12 +106,35 @@ mod tests {
     use super::*;
 
     #[test]
-    fn non_pdf_rejected() {
-        assert!(detect_pdf("a.docx").is_err());
-        assert!(detect_pdf("a.hwp").is_err());
-        assert!(detect_pdf("a.txt").is_err());
-        assert!(detect_pdf("a.pdf").is_ok());
-        assert!(detect_pdf("A.PDF").is_ok()); // 대소문자 무시
+    fn pdf_detected_by_content_not_extension() {
+        // Android content:// URI 는 확장자가 없는 이름을 주기도 한다.
+        // 판정은 오직 내용으로 한다.
+        assert!(detect_pdf_bytes(b"%PDF-1.7\n...").is_ok());
+        assert!(detect_pdf_bytes(b"\xef\xbb\xbf%PDF-1.4").is_ok()); // 앞에 BOM
+        assert!(detect_pdf_bytes(b"PK\x03\x04 docx").is_err());
+        assert!(detect_pdf_bytes(b"").is_err());
+    }
+
+    #[test]
+    fn magic_not_searched_past_head() {
+        // 본문 한참 뒤에 "%PDF-" 문자열이 있다고 PDF 로 인정하면 안 된다.
+        let mut bytes = vec![b'x'; MAGIC_SCAN_BYTES + 64];
+        bytes.extend_from_slice(b"%PDF-1.7");
+        assert!(detect_pdf_bytes(&bytes).is_err());
+    }
+
+    #[test]
+    fn filename_sanitized_for_citation() {
+        assert_eq!(sanitize_filename("answer.pdf"), "answer.pdf");
+        // URI 경로 조각 제거
+        assert_eq!(
+            sanitize_filename("primary:Download/사증민원.pdf"),
+            "사증민원.pdf"
+        );
+        // 확장자 없는 이름에는 붙여준다
+        assert_eq!(sanitize_filename("msf:1000000123"), "msf:1000000123.pdf");
+        assert_eq!(sanitize_filename("   "), "문서.pdf");
+        assert_eq!(sanitize_filename(""), "문서.pdf");
     }
 
     #[test]
