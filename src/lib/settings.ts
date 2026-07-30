@@ -11,7 +11,8 @@ export const PROVIDERS: { id: CloudProvider; label: string }[] = [
 export const MODELS: Record<CloudProvider, string[]> = {
   openai: ["gpt-4o", "gpt-4o-mini", "gpt-4.1"],
   anthropic: ["claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"],
-  gemini: ["gemini-3.6-flash", "gemini-3.6-flash-lite", "gemini-2.5-pro"],
+  // 모델 ID 는 Google 공식 목록과 일치해야 한다 — 존재하지 않는 ID 를 고르면 404 로 실패한다.
+  gemini: ["gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-pro"],
 };
 
 const PROVIDER_KEY = "cloud-provider";
