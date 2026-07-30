@@ -1,12 +1,12 @@
 # 비자 행정사 AI 모바일
 
-업로드한 비자/체류 관련 PDF 문서를 근거로 답변하는 iOS/Android용 RAG 챗봇입니다.
+업로드한 비자/체류 관련 PDF 문서를 근거로 답변하는 Android용 RAG 챗봇입니다.
 문서에 근거가 없으면 답을 지어내지 않고 "자료 없음"으로 응답합니다.
 
 ## 한눈에 보기
 
 - 대상: 비자 행정 업무 중 문서 근거를 빠르게 확인하려는 사용자
-- 플랫폼: Android, iOS
+- 배포 플랫폼: Android
 - 지원 파일: 텍스트가 추출되는 PDF
 - 채팅 모델: OpenAI, Anthropic, Google Gemini 중 선택
 - 임베딩/검색: 항상 OpenAI API 사용
@@ -43,8 +43,8 @@ OpenAI API 키는 필수입니다. 채팅 모델을 Anthropic이나 Gemini로 �
 | Anthropic으로 채팅 | OpenAI API 키 + Anthropic API 키 |
 | Gemini로 채팅 | OpenAI API 키 + Gemini API 키 |
 
-API 키는 iOS Keychain 또는 Android Keystore 기반 보안저장에 저장됩니다. 프론트엔드 localStorage나
-평문 파일에는 저장하지 않습니다.
+API 키는 Android Keystore 기반 보안저장에 저장됩니다. 프론트엔드 localStorage나 평문 파일에는
+저장하지 않습니다.
 
 ## Android 설치
 
@@ -60,7 +60,8 @@ GitHub Releases에서 최신 APK를 내려받아 설치합니다.
 
 ## GitHub Release 배포
 
-태그를 push하면 GitHub Actions가 Android APK를 빌드하고 Release asset으로 업로드합니다.
+태그를 push하면 GitHub Actions가 Android APK를 빌드하고 Release asset으로 업로드합니다. 이
+Release workflow 는 Android 전용입니다.
 
 ```bash
 git tag v0.1.0
@@ -73,7 +74,7 @@ git push origin v0.1.0
 - 서명 시크릿 없음: `immigration-ai-mobile-v0.1.0-android-debug.apk`
 - 서명 시크릿 있음 + 릴리즈 빌드: Play Console용 `.aab`도 함께 생성
 
-수동으로 실행하려면 GitHub Actions에서 `모바일 빌드` 워크플로를 선택하고:
+수동으로 실행하려면 GitHub Actions에서 `Android Release` 워크플로를 선택하고:
 
 - `release`: `true`
 - `tag`: `v0.1.0` 같은 릴리즈 태그
@@ -106,9 +107,7 @@ npm run dev
 npm run tauri:dev
 ```
 
-## 모바일 개발
-
-Android:
+## Android 개발
 
 ```bash
 export ANDROID_HOME=$HOME/Library/Android/sdk
@@ -117,16 +116,6 @@ export NDK_HOME=$ANDROID_HOME/ndk/<버전>
 npm run android:init
 npm run android:dev
 ```
-
-iOS 시뮬레이터:
-
-```bash
-npm run ios:init
-npm run ios:sim
-```
-
-`tauri ios dev`를 직접 실행하면 연결된 실기기를 선택해 서명 오류가 날 수 있습니다. 시뮬레이터 실행은
-`npm run ios:sim`을 사용하세요.
 
 `src-tauri/gen/`은 생성 산출물입니다. 커밋하지 않습니다.
 
@@ -164,7 +153,7 @@ src-tauri/src/
   documents/               PDF 파싱, 청킹, 문서 저장
   rag/                     OpenAI 임베딩, 벡터DB, 하이브리드 검색
   llm/cloud.rs             OpenAI, Anthropic, Gemini 생성 호출
-  security/                iOS Keychain, Android Keystore, 데스크탑 키체인
+  security/                Android Keystore, 데스크탑 키체인, iOS Keychain 구현
 ```
 
 ## 현재 한계
@@ -172,7 +161,8 @@ src-tauri/src/
 - 스캔 PDF/OCR은 지원하지 않습니다.
 - OpenAI API 키 없이 문서 인덱싱과 검색을 할 수 없습니다.
 - 유출불가 문서는 모바일 앱에서 사용할 수 없습니다.
-- 실제 스토어 배포는 Apple Developer 또는 Play Console 계정 설정이 필요합니다.
+- GitHub Release 설치 배포는 Android만 지원합니다.
+- Play Console 배포는 별도 계정 및 서명 설정이 필요합니다.
 
 ## 참고 문서
 

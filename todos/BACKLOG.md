@@ -21,6 +21,7 @@
 - [x] 0011 모바일 반응형 UI (`done/0011-mobile-ui.md`)
 - [x] 0012 GitHub 레포 + Actions CI/빌드 (`done/0012-ci-deploy.md`)
 - [x] 0018 Gemini API + 아이콘 + 사용자 README (`done/0018-gemini-release-readme-icon.md`)
+- [x] 0019 Android-only GitHub Release (`done/0019-android-only-release.md`)
 
 ## 남은 일 (계정·권한 필요 — 코드 작업 아님)
 
