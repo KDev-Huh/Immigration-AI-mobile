@@ -18,6 +18,7 @@ pub const SERVICE: &str = "com.immigrationai.mobile";
 pub enum CloudProvider {
     Openai,
     Anthropic,
+    Gemini,
 }
 
 impl CloudProvider {
@@ -26,6 +27,7 @@ impl CloudProvider {
         match self {
             CloudProvider::Openai => "openai_api_key",
             CloudProvider::Anthropic => "anthropic_api_key",
+            CloudProvider::Gemini => "gemini_api_key",
         }
     }
 }
@@ -85,6 +87,14 @@ mod tests {
             CloudProvider::Openai.account(),
             CloudProvider::Anthropic.account()
         );
+        assert_ne!(
+            CloudProvider::Openai.account(),
+            CloudProvider::Gemini.account()
+        );
+        assert_ne!(
+            CloudProvider::Anthropic.account(),
+            CloudProvider::Gemini.account()
+        );
     }
 
     #[test]
@@ -121,10 +131,12 @@ mod tests {
 
     #[test]
     fn provider_serde_is_lowercase() {
-        // 프론트 CloudProvider 타입("openai"|"anthropic")과의 계약.
+        // 프론트 CloudProvider 타입("openai"|"anthropic"|"gemini")과의 계약.
         let j = serde_json::to_string(&CloudProvider::Openai).unwrap();
         assert_eq!(j, "\"openai\"");
         let p: CloudProvider = serde_json::from_str("\"anthropic\"").unwrap();
         assert_eq!(p, CloudProvider::Anthropic);
+        let g: CloudProvider = serde_json::from_str("\"gemini\"").unwrap();
+        assert_eq!(g, CloudProvider::Gemini);
     }
 }

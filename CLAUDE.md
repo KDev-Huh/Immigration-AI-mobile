@@ -16,12 +16,12 @@
   탭 문서관리                         commands.rs (IPC, 검증/라우팅)
   탭 채팅 (cloud)                      ├─ documents/  파싱·청킹 (데스크탑 재사용)
   탭 설정 (키/모델)                     ├─ rag/        클라우드임베딩·벡터DB·하이브리드검색
-                                       ├─ llm/        cloud (OpenAI/Anthropic)
+                                       ├─ llm/        cloud (OpenAI/Anthropic/Gemini)
                                        └─ security/   모바일 보안저장
 ```
 
 - **로컬 LLM 없음**: Ollama·로컬임베딩·2컬렉션 분리 전부 제거. 벡터DB 단일 컬렉션.
-- **임베딩·생성 모두 클라우드**: 쿼리 임베딩도 OpenAI. (데스크탑은 로컬 임베딩이었음 — 여기선 클라우드)
+- **임베딩·생성 모두 클라우드**: 쿼리 임베딩도 OpenAI. 채팅 생성 공급자는 OpenAI/Anthropic/Gemini.
 - **하이브리드 검색**(벡터+키워드) 데스크탑에서 이식 — 한국어 정확 용어 recall.
 
 ## 데스크탑 재사용 지침

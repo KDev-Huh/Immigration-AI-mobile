@@ -6,13 +6,20 @@ on:
   workflow_dispatch:
     inputs:
       release:
-        description: "릴리즈 빌드(서명 시도)"
+        description: "GitHub Release 생성/업로드"
         type: boolean
         default: false
+      tag:
+        description: "수동 릴리즈 태그 (예: v0.1.0)"
+        type: string
+        default: ""
 
 concurrency:
   group: mobile-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: write
 
 jobs:
   android:
@@ -57,7 +64,7 @@ jobs:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
         run: npm run tauri android init
 
-      # 서명 시크릿이 있을 때만 릴리즈 서명을 붙인다. 없으면 디버그 서명 APK 로 끝난다.
+      # 서명 시크릿이 있을 때만 릴리즈 서명을 붙인다.
       - name: 업로드 키 구성
         if: env.ANDROID_KEY_BASE64 != ''
         run: |
@@ -69,14 +76,42 @@ jobs:
           password=$ANDROID_KEY_PASSWORD
           EOF
 
-      - name: 빌드 (APK + AAB)
+      - name: 빌드 (설치용 APK)
         env:
           NDK_HOME: ${{ steps.ndk.outputs.ndk-path }}
+          WANT_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release == true }}
         run: |
-          if [ "${{ inputs.release }}" = "true" ] || [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = "true" ]; then
+          set -euo pipefail
+          if [ "$WANT_RELEASE" = "true" ] && [ -n "$ANDROID_KEY_BASE64" ]; then
             npm run tauri android build -- --apk --aab
           else
             npm run tauri android build -- --debug --apk
+          fi
+
+      - name: 릴리즈 파일 정리
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release == true
+        env:
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          KIND="debug"
+          if [ -n "$ANDROID_KEY_BASE64" ]; then
+            KIND="release"
+          fi
+
+          APK="$(find src-tauri/gen/android/app/build/outputs/apk -type f -name '*.apk' | sort | head -1)"
+          if [ -z "$APK" ]; then
+            echo "APK 산출물을 찾지 못했습니다." >&2
+            exit 1
+          fi
+
+          cp "$APK" "release-assets/immigration-ai-mobile-${RELEASE_TAG}-android-${KIND}.apk"
+
+          AAB="$(find src-tauri/gen/android/app/build/outputs/bundle -type f -name '*.aab' 2>/dev/null | sort | head -1 || true)"
+          if [ -n "$AAB" ]; then
+            cp "$AAB" "release-assets/immigration-ai-mobile-${RELEASE_TAG}-android-${KIND}.aab"
           fi
 
       - uses: actions/upload-artifact@v4
@@ -86,6 +121,28 @@ jobs:
           path: |
             src-tauri/gen/android/app/build/outputs/apk/**/*.apk
             src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
+
+      - name: GitHub Release 업로드
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release == true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || inputs.tag }}
+        run: |
+          set -euo pipefail
+
+          if [ "$RELEASE_TAG" = "main" ] || [ "$RELEASE_TAG" = "master" ] || [ -z "$RELEASE_TAG" ]; then
+            echo "수동 실행으로 Release를 만들 때는 tag 입력값(예: v0.1.0)이 필요합니다." >&2
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release-assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" release-assets/* \
+              --title "$RELEASE_TAG" \
+              --target "$GITHUB_SHA" \
+              --generate-notes
+          fi
 
   ios:
     name: iOS

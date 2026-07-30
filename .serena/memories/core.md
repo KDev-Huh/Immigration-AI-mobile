@@ -1,0 +1,11 @@
+# Core
+
+- Product: Korean immigration/visa RAG assistant mobile app for administrative use; derived from desktop `../Immigration-AI` but mobile removes local LLM entirely.
+- Source map: React/TS UI in `src/`; Tauri Rust core in `src-tauri/src/`; docs/ADRs in `docs/`; task harness in `todos/`; temporary Tauri mobile generated projects under `src-tauri/gen/` are not committed.
+- Main invariant: mobile is cloud-only for embeddings and generation. Only `leakable` documents are accepted; `confidential` exists only to express rejection and must not be stored/indexed.
+- Data locality: documents and vector DB stay in app data dir on device; no remote app server or telemetry. API keys are OS secure storage only.
+- Architecture references: read `mem:tech_stack` for frameworks/dependencies; read `mem:conventions` for IPC/security/workflow rules; read `mem:suggested_commands` for dev/mobile commands; read `mem:task_completion` before finishing coding work.
+- Rust domains: `commands.rs` is IPC validation/routing; `documents/` parses PDFs, chunks text, stores metadata/original bytes; `rag/` embeds via OpenAI, stores a single JSON vector collection, does hybrid retrieval; `llm/cloud.rs` calls OpenAI/Anthropic chat and OpenAI embeddings; `security/` stores API keys per platform.
+- UI domains: `App.tsx` has bottom tabs for Documents/Chat/Settings; `DocumentsTab` reads selected PDF bytes via Tauri fs plugin then uploads and indexes; `ChatTab` checks OpenAI key plus selected chat provider key; `SettingsTab` persists provider/model in localStorage and keys through Rust secure storage only; `ChatPane` stores chat sessions in localStorage and renders citations.
+- Current handoff status from `HANDOFF.md`/backlog: core functionality and Android/iOS simulator execution were verified as of 2026-07-29; remaining non-code/account items are real OpenAI-key E2E, Apple Developer signing/TestFlight, Play Console upload key/internal track.
+- Special dependency note: `src-tauri/Cargo.toml` patches `wry` to `vendor/wry` for iOS crash workaround. Remove patch and vendor copy only after upstream `wry` release is confirmed to fix `platform_webview_version()` iOS crash.

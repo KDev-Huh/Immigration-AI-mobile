@@ -7,9 +7,11 @@ use serde_json::Value;
 pub const OPENAI_CHAT_URL: &str = "https://api.openai.com/v1/chat/completions";
 pub const OPENAI_EMBED_URL: &str = "https://api.openai.com/v1/embeddings";
 pub const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
+pub const GEMINI_URL_BASE: &str = "https://generativelanguage.googleapis.com/v1beta/models";
 
 pub const OPENAI_MODEL: &str = "gpt-4o";
 pub const ANTHROPIC_MODEL: &str = "claude-sonnet-5";
+pub const GEMINI_MODEL: &str = "gemini-3.6-flash";
 pub const ANTHROPIC_VERSION: &str = "2023-06-01";
 const MAX_TOKENS: u32 = 1024;
 
@@ -58,6 +60,45 @@ fn parse_anthropic(body: &str) -> Result<String> {
         .ok_or_else(|| anyhow!("Anthropic 응답 형식 오류: {body}"))
 }
 
+// --- Gemini 생성 ---
+fn gemini_url(model: &str) -> String {
+    let model = model.strip_prefix("models/").unwrap_or(model);
+    format!("{GEMINI_URL_BASE}/{model}:generateContent")
+}
+
+fn gemini_body(system: &str, user: &str) -> Value {
+    serde_json::json!({
+        "system_instruction": {
+            "parts": [{ "text": system }],
+        },
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{ "text": user }],
+            },
+        ],
+        "generationConfig": {
+            "maxOutputTokens": MAX_TOKENS,
+        },
+    })
+}
+
+fn parse_gemini(body: &str) -> Result<String> {
+    let v: Value = serde_json::from_str(body).map_err(|e| anyhow!("Gemini 응답 파싱 실패: {e}"))?;
+    let parts = v["candidates"][0]["content"]["parts"]
+        .as_array()
+        .ok_or_else(|| anyhow!("Gemini 응답 형식 오류: {body}"))?;
+    let text = parts
+        .iter()
+        .filter_map(|p| p["text"].as_str())
+        .collect::<Vec<_>>()
+        .join("");
+    if text.is_empty() {
+        return Err(anyhow!("Gemini 응답에 텍스트가 없습니다: {body}"));
+    }
+    Ok(text)
+}
+
 /// 클라우드 생성. model 미지정 시 provider 기본 모델.
 pub async fn generate(
     provider: CloudProvider,
@@ -92,6 +133,18 @@ pub async fn generate(
                 .map_err(|e| anyhow!("Anthropic 연결 실패: {e}"))?;
             let resp = check_status("Anthropic", resp).await?;
             parse_anthropic(&resp)
+        }
+        CloudProvider::Gemini => {
+            let m = model.unwrap_or(GEMINI_MODEL);
+            let resp = client
+                .post(gemini_url(m))
+                .header("x-goog-api-key", api_key)
+                .json(&gemini_body(system, user))
+                .send()
+                .await
+                .map_err(|e| anyhow!("Gemini 연결 실패: {e}"))?;
+            let resp = check_status("Gemini", resp).await?;
+            parse_gemini(&resp)
         }
     }
 }
@@ -198,6 +251,34 @@ mod tests {
         let body = r#"{"content":[{"type":"text","text":"연장 절차"}]}"#;
         assert_eq!(parse_anthropic(body).unwrap(), "연장 절차");
         assert!(parse_anthropic(r#"{"content":[]}"#).is_err());
+    }
+
+    #[test]
+    fn gemini_body_shape() {
+        let b = gemini_body("sys", "usr");
+        assert_eq!(b["system_instruction"]["parts"][0]["text"], "sys");
+        assert_eq!(b["contents"][0]["role"], "user");
+        assert_eq!(b["contents"][0]["parts"][0]["text"], "usr");
+        assert_eq!(b["generationConfig"]["maxOutputTokens"], MAX_TOKENS);
+    }
+
+    #[test]
+    fn parse_gemini_ok_and_err() {
+        let body = r#"{"candidates":[{"content":{"parts":[{"text":"필요 "},{"text":"서류"}]}}]}"#;
+        assert_eq!(parse_gemini(body).unwrap(), "필요 서류");
+        assert!(parse_gemini(r#"{"candidates":[]}"#).is_err());
+    }
+
+    #[test]
+    fn gemini_url_accepts_plain_or_prefixed_model() {
+        assert_eq!(
+            gemini_url("gemini-3.6-flash"),
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+        );
+        assert_eq!(
+            gemini_url("models/gemini-3.6-flash"),
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent"
+        );
     }
 
     #[test]

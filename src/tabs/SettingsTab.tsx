@@ -3,10 +3,14 @@
 import { useEffect, useState } from "react";
 import { deleteApiKey, hasApiKey, setApiKey } from "@/lib/ipc";
 import {
+  FONT_SIZES,
   MODELS,
   PROVIDERS,
+  type FontSize,
   getModel,
+  getFontSize,
   getProvider,
+  setFontSize as persistFontSize,
   setModel as persistModel,
   setProvider as persistProvider,
 } from "@/lib/settings";
@@ -19,6 +23,8 @@ export default function SettingsTab() {
   const [input, setInput] = useState("");
   const [target, setTarget] = useState<CloudProvider>("openai");
   const [msg, setMsg] = useState<string | null>(null);
+  const [fontSize, setFontSize] = useState<FontSize>(getFontSize());
+  const keyPlaceholder = target === "gemini" ? "AIza..." : "sk-...";
 
   const refreshKeys = async () => {
     const entries = await Promise.all(
@@ -41,6 +47,11 @@ export default function SettingsTab() {
   const onPickModel = (m: string) => {
     setModel(m);
     persistModel(provider, m);
+  };
+
+  const onPickFontSize = (size: FontSize) => {
+    setFontSize(size);
+    persistFontSize(size);
   };
 
   const onSaveKey = async () => {
@@ -102,10 +113,27 @@ export default function SettingsTab() {
         </datalist>
       </div>
 
+      <h3>화면</h3>
+      <div className="field">
+        <span className="field-label">글자 크기</span>
+        <div className="segmented" role="group" aria-label="글자 크기">
+          {FONT_SIZES.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className={fontSize === s.id ? "active" : ""}
+              onClick={() => onPickFontSize(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <h3>API 키</h3>
       <p className="note">
-        임베딩(문서 색인·검색)은 항상 OpenAI 를 사용합니다. Anthropic 으로 채팅하더라도
-        <b> OpenAI 키는 반드시 필요</b>합니다.
+        임베딩(문서 색인·검색)은 항상 OpenAI 를 사용합니다. Anthropic 또는 Gemini 로
+        채팅하더라도 <b>OpenAI 키는 반드시 필요</b>합니다.
       </p>
 
       <ul className="key-list">
@@ -148,7 +176,7 @@ export default function SettingsTab() {
           autoCorrect="off"
           autoCapitalize="none"
           spellCheck={false}
-          placeholder="sk-…"
+          placeholder={keyPlaceholder}
           value={input}
           onChange={(e) => setInput(e.target.value)}
         />

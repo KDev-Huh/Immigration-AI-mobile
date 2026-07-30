@@ -1,9 +1,10 @@
 // 모바일 셸: 하단 탭바 3개(문서/채팅/설정).
 // 데스크탑판의 상단 탭바 + 사이드바 패턴 대신 모바일 관례(하단 탭)를 따른다.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DocumentsTab from "./tabs/DocumentsTab";
 import ChatTab from "./tabs/ChatTab";
 import SettingsTab from "./tabs/SettingsTab";
+import { applyFontSize } from "./lib/settings";
 
 type Tab = "documents" | "chat" | "settings";
 
@@ -15,6 +16,10 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export default function App() {
   const [tab, setTab] = useState<Tab>("chat");
+
+  useEffect(() => {
+    applyFontSize();
+  }, []);
 
   return (
     <div className="app">

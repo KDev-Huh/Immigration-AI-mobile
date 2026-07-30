@@ -10,7 +10,7 @@
 ## 결정
 
 - **앱**: Tauri v2 모바일 — 데스크탑의 Rust/React 코드 최대 재사용.
-- **LLM**: OpenAI API (chat + embedding). Anthropic(chat) 선택, 임베딩은 OpenAI.
+- **LLM**: OpenAI API (chat + embedding). Anthropic/Gemini(chat) 선택, 임베딩은 OpenAI.
 - **임베딩**: `text-embedding-3-small` (1536차원, 클라우드).
 - **벡터DB**: 기기 로컬(초기 JSON, 규모 크면 SQLite).
 - **PDF**: pdf-extract (데스크탑 검증).

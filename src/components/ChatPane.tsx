@@ -1,7 +1,8 @@
 // 모바일 채팅 UI. 세션 목록은 상시 사이드바가 아니라 오버레이 드로어(좁은 화면 대응).
-// 세션은 localStorage 영속. 답변 하단에 출처(파일명·페이지) 표시 — 컨벤션상 필수.
+// 세션은 localStorage 영속.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChatAnswer, ChatSession, Message } from "@/types";
+import MarkdownMessage from "./MarkdownMessage";
 
 interface Props {
   ns: string;
@@ -150,19 +151,13 @@ export default function ChatPane({ ns, onAsk, subtitle }: Props) {
         )}
         {active?.messages.map((m, i) => (
           <div key={i} className={`msg ${m.role}`}>
-            <div className="bubble">{m.content}</div>
-            {m.citations && m.citations.length > 0 && (
-              <ul className="citations">
-                {m.citations.map((c, j) => (
-                  <li key={j}>
-                    <b>
-                      {c.filename} p.{c.page}
-                    </b>{" "}
-                    {c.snippet}
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div className="bubble">
+              {m.role === "assistant" ? (
+                <MarkdownMessage content={m.content} />
+              ) : (
+                m.content
+              )}
+            </div>
           </div>
         ))}
         {busy && (

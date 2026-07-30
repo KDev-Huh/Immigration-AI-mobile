@@ -29,7 +29,7 @@ export interface DocumentMeta {
 }
 
 /** 클라우드 공급자. 브라우저 로그인은 미지원(HANDOFF 제약 참조). */
-export type CloudProvider = "openai" | "anthropic";
+export type CloudProvider = "openai" | "anthropic" | "gemini";
 
 export interface Citation {
   docId: string;
