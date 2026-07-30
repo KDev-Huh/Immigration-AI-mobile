@@ -23,8 +23,8 @@
 
 ## 남은 일 (계정·권한 필요 — 코드 작업 아님)
 
-- [ ] 0013 GitHub Billing 해결 → CI 첫 실행 통과 확인 (현재 결제 문제로 잡 시작 거부됨)
-- [ ] 0016 iOS Keychain 실동작 확인 (시뮬레이터 수동 1회, Android 와 동일 절차)
+- [x] 0013 CI 실행 (public 전환으로 해결)
+- [x] 0016 iOS Keychain 실동작 확인 (시뮬레이터에서 set→has→복호화→delete 전 경로)
 - [ ] 0017 실제 OpenAI 키로 업로드→인덱싱→질의 E2E
 - [ ] 0014 Apple Developer 서명 (`APPLE_*` 시크릿) → iOS TestFlight
 - [ ] 0015 Play Console 업로드 키 (`ANDROID_*` 시크릿) → 내부 테스트 트랙

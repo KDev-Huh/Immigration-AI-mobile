@@ -53,19 +53,32 @@ export ANDROID_HOME=$HOME/Library/Android/sdk
 export NDK_HOME=$ANDROID_HOME/ndk/<버전>
 
 npm run android:init && npm run android:dev
-npm run ios:init && npm run ios:dev
+npm run ios:init && npm run ios:sim      # ← 시뮬레이터. Apple 계정 불필요
 ```
 
 `src-tauri/gen/` 은 커밋하지 않는다. CI 도 매번 `init` 으로 재생성한다.
 
-시뮬레이터/에뮬레이터 빌드는 서명이 필요 없다:
+#### iOS 는 `ios:dev` 대신 `ios:sim` 을 쓸 것
+
+`tauri ios dev` 를 기기 지정 없이 실행하면 **연결된 실기기**를 골라버리고, 실기기 빌드는
+서명을 요구해서 이렇게 실패한다:
+
+```
+error: Signing for "immigration-ai-mobile_iOS" requires a development team.
+```
+
+`npm run ios:sim` 은 시뮬레이터를 이름으로 명시해 `-sdk iphonesimulator` 로 빌드하므로
+서명 단계가 아예 생략된다. 포트 1420 점유 같은 흔한 함정도 미리 잡아준다.
+
+실기기에서 돌리려면 Xcode > Settings > Accounts 에 Apple ID 를 넣으면 된다
+(무료 계정도 개인 기기용 7일 프로비저닝이 나온다 — $99 는 스토어 배포에만 필요).
+
+서명 없는 빌드 산출물만 필요하면:
 
 ```bash
 npm run tauri android build -- --debug --apk --target aarch64
-npm run tauri ios build -- --debug --target aarch64-sim --ci
+npm run ios:build:sim
 ```
-
-실기기 iOS 빌드는 Apple Developer 팀이 있어야 한다.
 
 ## CI
 

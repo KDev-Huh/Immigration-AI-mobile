@@ -15,8 +15,10 @@
     "android:dev": "tauri android dev",
     "android:build": "tauri android build",
     "ios:init": "tauri ios init",
+    "ios:sim": "bash scripts/ios-sim.sh",
     "ios:dev": "tauri ios dev",
     "ios:build": "tauri ios build",
+    "ios:build:sim": "tauri ios build --debug --target aarch64-sim --ci",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"

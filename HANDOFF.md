@@ -18,9 +18,9 @@
 | Android 빌드·실행 | ✅ APK 빌드 → 에뮬레이터 실행 |
 | Android Keystore 보안저장 | ✅ 암호문만 저장, 콜드 스타트 후 복호화까지 확인 |
 | iOS 빌드·실행 | ✅ 시뮬레이터 빌드·실행 (wry 패치 필요했음 — ADR 0003) |
-| iOS Keychain 보안저장 | ⚠️ 컴파일·실행만 확인. **저장/조회 실동작 미검증** |
-| GitHub 레포 | ✅ `KDev-Huh/Immigration-AI-mobile` (private) |
-| CI (GitHub Actions) | ⚠️ 워크플로 정상, **계정 결제 문제로 잡 시작 거부** |
+| iOS Keychain 보안저장 | ✅ 저장→조회→복호화→삭제 전 경로 확인 |
+| GitHub 레포 | ✅ `KDev-Huh/Immigration-AI-mobile` (**public**) |
+| CI (GitHub Actions) | ✅ public 전환으로 Actions 무료 사용 |
 | 스토어 서명·배포 | ❌ Apple Developer / Play Console 계정 필요 |
 
 ## 확정된 핵심 결정
@@ -53,7 +53,12 @@
    프론트에서 `plugin-fs.readFile()` 로 바이트를 읽어 IPC 로 넘긴다.
 4. **보안저장 커맨드는 반드시 `spawn_blocking` 위에서.** Android 구현이 메인 스레드 왕복을
    기다리므로 메인 스레드에서 부르면 교착한다.
-5. 시뮬레이터/에뮬레이터 빌드는 **서명이 필요 없다** — 실기기 iOS 만 Apple 팀이 필요.
+5. **`tauri ios dev` 는 기기를 지정하지 않으면 연결된 실기기를 고른다** → 서명 요구로 실패.
+   시뮬레이터를 이름으로 넘기면 `-sdk iphonesimulator` 로 빌드돼 서명이 생략된다.
+   `npm run ios:sim` 이 이걸 처리한다.
+6. **포트 1420 이 점유돼 있으면** vite(strictPort) 가 죽고, 그 결과 Xcode 의 Rust 빌드 단계가
+   `failed to read CLI options: ... ConnectionRefused` 라는 무관해 보이는 패닉을 낸다.
+   원인은 남아 있는 dev 서버다. `ios:sim` 이 미리 잡아준다.
 
 ## 하네스 워크플로
 
@@ -62,8 +67,5 @@
 
 ## 다음 할 일
 
-1. GitHub Billing 해결 → CI 재실행 (`gh run rerun --failed`). private 레포는 Actions 분을 소모하고 `macos-latest` 는 10배로 계산된다.
-2. iOS 시뮬레이터에서 설정 탭 → 키 저장 → 앱 재시작 → 채팅 1회
-   (Android 에서 한 것과 동일한 확인. 401 이 뜨면 Keychain 왕복 정상)
-3. 실제 OpenAI 키로 문서 업로드 → 인덱싱 → 질의 E2E
-4. 서명 시크릿 등록 후 `mobile-build.yml` 릴리즈 실행
+1. 실제 OpenAI 키로 문서 업로드 → 인덱싱 → 질의 E2E (유일하게 남은 기능 검증)
+2. 서명 시크릿 등록 후 `mobile-build.yml` 릴리즈 실행 (Apple Developer / Play Console 계정)
