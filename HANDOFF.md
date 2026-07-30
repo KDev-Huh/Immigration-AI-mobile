@@ -53,10 +53,16 @@
    프론트에서 `plugin-fs.readFile()` 로 바이트를 읽어 IPC 로 넘긴다.
 4. **보안저장 커맨드는 반드시 `spawn_blocking` 위에서.** Android 구현이 메인 스레드 왕복을
    기다리므로 메인 스레드에서 부르면 교착한다.
-5. **`tauri ios dev` 는 기기를 지정하지 않으면 연결된 실기기를 고른다** → 서명 요구로 실패.
+5. **Android 16KB 페이지 기기에서 .so 로드 실패.** Android 15+ 의 `ps16k` 시스템 이미지와
+   Pixel 8/9 이후 실기기는 페이지 크기가 16KB 다. 기본 4KB 정렬 .so 는 `dlopen` 이 거부한다
+   (`empty/missing DT_HASH/DT_GNU_HASH ... new hash type from the future?` — 메시지는 해시를
+   가리키지만 실제 원인은 정렬이다). 4KB 이미지에서는 멀쩡히 돌아서 놓치기 쉽다.
+   `build.rs` 에서 `-Wl,-z,max-page-size=16384` 를 붙여 해결. **`.cargo/config.toml` 의
+   rustflags 로는 안 된다** — tauri CLI 가 `RUSTFLAGS` 를 직접 세팅해 config 값을 덮는다.
+6. **`tauri ios dev` 는 기기를 지정하지 않으면 연결된 실기기를 고른다** → 서명 요구로 실패.
    시뮬레이터를 이름으로 넘기면 `-sdk iphonesimulator` 로 빌드돼 서명이 생략된다.
    `npm run ios:sim` 이 이걸 처리한다.
-6. **포트 1420 이 점유돼 있으면** vite(strictPort) 가 죽고, 그 결과 Xcode 의 Rust 빌드 단계가
+7. **포트 1420 이 점유돼 있으면** vite(strictPort) 가 죽고, 그 결과 Xcode 의 Rust 빌드 단계가
    `failed to read CLI options: ... ConnectionRefused` 라는 무관해 보이는 패닉을 낸다.
    원인은 남아 있는 dev 서버다. `ios:sim` 이 미리 잡아준다.
 
